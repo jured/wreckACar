@@ -3,7 +3,7 @@
 <html>
 
 <head>
-	<title>Wreck it Stas</title>
+	<title>Car smash</title>
 		
 	<script type="text/javascript" src="libs/three.min.js"></script>
 	<script type="text/javascript" src="libs/stats.js"></script>
@@ -22,11 +22,16 @@
 
 <body>
 	<div id="heading">
-		<h1>Stas the car crasher</h1>
-		<p>Use the arrow keys to drive around. Multiplayer will once be supported!</p>
+		<h1>Car smash</h1>
+	</div>
+	<div>
+		Number of players: <input type="number" min=2 max=4 id="player_num" width=70, value=2>
+		Score: <input type="number" min=1 max=10 id="score_num" width=70 value=1>
+		<input type="submit" value="Start game" onclick=init()>
+
 	</div>
 	<div id="viewport"></div>
-	<script>init();</script>
+	<!--<script>init();</script>-->
 </body>
 
 </html>
