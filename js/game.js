@@ -11,7 +11,7 @@ KEYS = [];
 
 var ZERO = new THREE.Vector3(0,0,0);
 var ONE = new THREE.Vector3(1,1, 1);
-
+var SIX = new THREE.Vector3(.6,.6,.6);
 
 var score_board;
 
@@ -288,7 +288,7 @@ createCar = function(scene, color, position) {
 	return car;
 }
 
-m = {low_limit:1, hight_limit:0, velocity_forward:20, velocity_bacward:-5, max_force:1000};
+m = {low_limit:1, hight_limit:0, velocity_forward:20, velocity_bacward:-5, max_force:10000};
 t = {low_limit:-Math.PI / 2, hight_limit:Math.PI / 2, velocity_left:1, velocity_right:-1, max_force:400};
 refreshSpeeds = function() {
 	for(var i = 0; i < PLAYERS.length; i++) {
@@ -297,11 +297,12 @@ refreshSpeeds = function() {
 
 		var l = 1;
 		var r = 1;
-		if (! (KEYS[p.controls.left] && KEYS[p.controls.right] )) {
+		if (! (KEYS[p.controls.left] == true && KEYS[p.controls.right] == true )) {
 			var l = KEYS[p.controls.left] == true ? 0 : 1; // left
 			var r = KEYS[p.controls.right] == true ? 0 : 1; // right
-		}
+		} 
 
+		car.body.setAngularFactor(SIX);
 		if (KEYS[p.controls.up] == true) {
 			car.wheel_bl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, l*m.velocity_forward, m.max_force);
 			car.wheel_br_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, r*m.velocity_forward, m.max_force);
