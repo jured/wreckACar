@@ -53,6 +53,7 @@ init = function() {
 		// todo: tle nastimej da bo pravilna kamera
 		camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 1000)
 		camera.position.set( 0, 600, 0 );
+		//camera.position.set( 60, 50, 60);
 		camera.lookAt( scene.position );
 		scene.add( camera );
 
@@ -127,12 +128,25 @@ updateLifes = function() {
 
 checkPositionOfCars = function() {
 	for(var i = 0; i < PLAYERS.length; i++) {
-		console.log(PLAYERS[0].car.body.position)
-		if (PLAYERS[0].car.body.position.z < -50) {
+		console.log(PLAYERS[i].car.body.position)
+		if (PLAYERS[i].car.body.position.y < -50) {
 			// TODO: car dies and respawns if it has enought score
+			if (PLAYERS[i].lifes > 0) {
+				PLAYERS[i].lifes = PLAYERS[i].lifes - 1;
+				respawn(PLAYERS[i])
+			}
 
 		}
 	}
+}
+
+respawn = function(player) {
+	var car = player.car;
+
+	car.body.position.y = 10;
+	car.body.position.x = 0;
+	car.body.position.z = 0;
+
 }
 
 // todo: copy paste, daj parametrizerane kontrole, spremen obliko lastnosti avta
@@ -147,17 +161,17 @@ createCar = function(scene, color, position) {
 	data["car_material"] = Physijs.createMaterial(
 			new THREE.MeshLambertMaterial({ color: color }),
 			.8, // high friction
-			.2 // low restitution
+			10 // low restitution
 		);
 	data["wheel_material"] = Physijs.createMaterial(
 			new THREE.MeshLambertMaterial({ color: 0x444444 }),
 			1.0, // high friction
-			1.0 // medium restitution
+			0 // medium restitution
 		);
-	data["wheel_geometry"] = new THREE.CylinderGeometry( 2.0*k, 2.0*k, 1.0*k, 13 );
+	data["wheel_geometry"] = new THREE.CylinderGeometry( 2.5*k, 2.5*k, 1.5*k, 13 );
 		
 	car.body = new Physijs.BoxMesh(
-		new THREE.BoxGeometry( 10*k, 5*k, 7*k ),
+		new THREE.BoxGeometry( 10*k, 2*k, 7*k ),
 		data["car_material"],
 		1000
 	);
@@ -168,7 +182,7 @@ createCar = function(scene, color, position) {
 	scene.add( car.body );
 	
 	// Wheels
-	wheel_pos = {x: 3.5, y: 6.5, z:5}
+	wheel_pos = {x: 3.5, y: 10, z:5}
 
 	car.wheel_fl = new Physijs.CylinderMesh(
 		data["wheel_geometry"],
