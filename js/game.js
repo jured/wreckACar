@@ -11,6 +11,8 @@ PLAYER_NAMES = ['Bob', 'Richard', '42', 'Pina Collada']
 
 PLAYERS = [];
 
+KEYS = [];
+
 var score_board;
 
 Physijs.scripts.worker = 'libs/physijs_worker.js';
@@ -76,6 +78,8 @@ init = function() {
 		var ground = createGround(scene);
 
 		// Car
+		initKeys();
+
 		var p;
 		for (var i = 0; i < NUMBER_OF_PLAYERS; i++) {
 			var col = Object.keys(COLORS)[i];
@@ -83,10 +87,11 @@ init = function() {
 				index: i,
 				name: PLAYER_NAMES[i],
 				color: col,
+				controls: CONTROLS[i],
 				car: createCar(scene, COLORS[col], {x: 10*i, y:10, z:10*i}),
 				lifes : MAX_LIFES
 			}
-			addCarControls(p.car, CONTROLS[i]);
+			//addCarControls(p.car, CONTROLS[i]);
 			PLAYERS.push(p);
 		}
 	
@@ -97,6 +102,8 @@ init = function() {
 
 render = function() {
 		checkPositionOfCars();
+		refreshSpeeds();
+
 
 		requestAnimationFrame( render );
 		renderer.render( scene, camera );
@@ -128,7 +135,6 @@ updateLifes = function() {
 
 checkPositionOfCars = function() {
 	for(var i = 0; i < PLAYERS.length; i++) {
-		console.log(PLAYERS[i].car.body.position)
 		if (PLAYERS[i].car.body.position.y < -50) {
 			// TODO: car dies and respawns if it has enought score
 			if (PLAYERS[i].lifes > 0) {
@@ -146,6 +152,23 @@ respawn = function(player) {
 	car.body.position.y = 10;
 	car.body.position.x = 0;
 	car.body.position.z = 0;
+
+	car.__dirtyPosition = true;
+
+}
+
+initKeys = function() {
+	window.addEventListener("keydown",
+    function(e){
+        KEYS[e.keyCode] = true;
+    }, false);
+
+    window.addEventListener('keyup',
+    function(e){
+        KEYS[e.keyCode] = false;
+    }, false);
+
+
 
 }
 
@@ -165,8 +188,8 @@ createCar = function(scene, color, position) {
 		);
 	data["wheel_material"] = Physijs.createMaterial(
 			new THREE.MeshLambertMaterial({ color: 0x444444 }),
-			1.0, // high friction
-			0 // medium restitution
+			1, // high friction
+			0.2 // medium restitution
 		);
 	data["wheel_geometry"] = new THREE.CylinderGeometry( 2.5*k, 2.5*k, 1.5*k, 13 );
 		
@@ -197,8 +220,8 @@ createCar = function(scene, color, position) {
 		car.wheel_fl, car.body, new THREE.Vector3((-wheel_pos.x + position.x)*k, (wheel_pos.y + position.y)*k, (wheel_pos.z  + position.z)*k)
 	);
 	scene.addConstraint( car.wheel_fl_constraint );
-	car.wheel_fl_constraint.setAngularLowerLimit({ x: 0, y: -Math.PI / 8, z: 1 });
-	car.wheel_fl_constraint.setAngularUpperLimit({ x: 0, y: Math.PI / 8, z: 0 });
+	car.wheel_fl_constraint.setAngularLowerLimit({ x: 0, y: 0, z: 0 });
+	car.wheel_fl_constraint.setAngularUpperLimit({ x: 0, y: 0, z: 0 });
 	// end of front lef wheel
 
 	car.wheel_fr = new Physijs.CylinderMesh(
@@ -214,8 +237,8 @@ createCar = function(scene, color, position) {
 		car.wheel_fr, car.body, new THREE.Vector3(-wheel_pos.x + position.x, wheel_pos.y + position.y, -wheel_pos.z + position.z)
 	);
 	scene.addConstraint( car.wheel_fr_constraint );
-	car.wheel_fr_constraint.setAngularLowerLimit({ x: 0, y: -Math.PI / 8, z: 1 });
-	car.wheel_fr_constraint.setAngularUpperLimit({ x: 0, y: Math.PI / 8, z: 0 });
+	car.wheel_fr_constraint.setAngularLowerLimit({ x: 0, y: 0, z: 0 });
+	car.wheel_fr_constraint.setAngularUpperLimit({ x: 0, y: 0, z: 0 });
 	
 	car.wheel_bl = new Physijs.CylinderMesh(
 		data["wheel_geometry"],
@@ -252,6 +275,53 @@ createCar = function(scene, color, position) {
 	return car;
 }
 
+m = {low_limit:1, hight_limit:0, velocity_forward:20, velocity_bacward:-5, max_force:1000};
+t = {low_limit:-Math.PI / 2, hight_limit:Math.PI / 2, velocity_left:1, velocity_right:-1, max_force:400};
+refreshSpeeds = function() {
+	for(var i = 0; i < PLAYERS.length; i++) {
+		var p = PLAYERS[i];
+		var car = p.car;
+
+		var l = 1;
+		var r = 1;
+		if (! (KEYS[p.controls.left] && KEYS[p.controls.right] )) {
+			var l = KEYS[p.controls.left] == true ? 0 : 1; // left
+			var r = KEYS[p.controls.right] == true ? 0 : 1; // right
+		}
+
+		if (KEYS[p.controls.up] == true) {
+			car.wheel_bl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, l*m.velocity_forward, m.max_force);
+			car.wheel_br_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, r*m.velocity_forward, m.max_force);
+			car.wheel_fl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, l*m.velocity_forward, m.max_force);
+			car.wheel_fr_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, r*m.velocity_forward, m.max_force);
+
+			car.wheel_bl_constraint.enableAngularMotor( 2 );
+			car.wheel_br_constraint.enableAngularMotor( 2 );
+			car.wheel_fl_constraint.enableAngularMotor( 2 );
+			car.wheel_fr_constraint.enableAngularMotor( 2 );
+		} else if (KEYS[p.controls.back] == true) {
+			car.wheel_bl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, -l*m.velocity_forward, m.max_force);
+			car.wheel_br_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, -r*m.velocity_forward, m.max_force);
+			car.wheel_fl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, -l*m.velocity_forward, m.max_force);
+			car.wheel_fr_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, -r*m.velocity_forward, m.max_force);
+
+			car.wheel_bl_constraint.enableAngularMotor( 2 );
+			car.wheel_br_constraint.enableAngularMotor( 2 );
+			car.wheel_fl_constraint.enableAngularMotor( 2 );
+			car.wheel_fr_constraint.enableAngularMotor( 2 );
+		} 
+		else {
+			car.wheel_bl_constraint.disableAngularMotor( 2 );
+			car.wheel_br_constraint.disableAngularMotor( 2 );
+			car.wheel_fl_constraint.disableAngularMotor( 2 );
+			car.wheel_fr_constraint.disableAngularMotor( 2 );
+		}    
+
+
+	}
+
+}
+
 addCarControls = function(car, controls) {
 
 	//constraint.configureAngularMotor(
@@ -273,8 +343,13 @@ addCarControls = function(car, controls) {
 				case controls.up:
 					car.wheel_bl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
 					car.wheel_br_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
+					car.wheel_fl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
+					car.wheel_fr_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
+
 					car.wheel_bl_constraint.enableAngularMotor( 2 );
 					car.wheel_br_constraint.enableAngularMotor( 2 );
+					car.wheel_fl_constraint.enableAngularMotor( 2 );
+					car.wheel_fr_constraint.enableAngularMotor( 2 );
 					break;
 				case controls.back:
 					car.wheel_bl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_bacward, m.max_force);
@@ -283,16 +358,19 @@ addCarControls = function(car, controls) {
 					car.wheel_br_constraint.enableAngularMotor( 2 );
 					break;
 				case controls.left:
-					car.wheel_fl_constraint.configureAngularMotor( 1, t.low_limit, t.high_limit, t.velocity_left, t.max_force);
-					car.wheel_fr_constraint.configureAngularMotor( 1, t.low_limit, t.high_limit, t.velocity_left, t.max_force);
-					car.wheel_fl_constraint.enableAngularMotor( 1 );
-					car.wheel_fr_constraint.enableAngularMotor( 1 );
+					car.wheel_bl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, -2*m.velocity_forward, m.max_force);
+					car.wheel_br_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
+					car.wheel_fl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, -2*m.velocity_forward, m.max_force);
+					car.wheel_fr_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
+
+					car.wheel_bl_constraint.enableAngularMotor( 2 );
+					car.wheel_br_constraint.enableAngularMotor( 2 );
+					car.wheel_fl_constraint.enableAngularMotor( 2 );
+					car.wheel_fr_constraint.enableAngularMotor( 2 );
 					break;
+
 				case controls.right:
-					car.wheel_fl_constraint.configureAngularMotor( 1, t.low_limit, t.high_limit, t.velocity_right, t.max_force);
-					car.wheel_fr_constraint.configureAngularMotor( 1, t.low_limit, t.high_limit, t.velocity_right, t.max_force);
-					car.wheel_fl_constraint.enableAngularMotor( 1 );
-					car.wheel_fr_constraint.enableAngularMotor( 1 );
+					
 					break;
 			}
 		}
@@ -311,12 +389,12 @@ addCarControls = function(car, controls) {
 					car.wheel_br_constraint.disableAngularMotor( 2 );
 					break;
 				case controls.left:
-					car.wheel_fl_constraint.disableAngularMotor( 1 );
-					car.wheel_fr_constraint.disableAngularMotor( 1 );
+					car.wheel_fl_constraint.disableAngularMotor( 2 );
+					car.wheel_fr_constraint.disableAngularMotor( 2 );
 					break;
 				case controls.right:
-					car.wheel_fl_constraint.disableAngularMotor( 1 );
-					car.wheel_fr_constraint.disableAngularMotor( 1 );
+					car.wheel_fl_constraint.disableAngularMotor( 2 );
+					car.wheel_fr_constraint.disableAngularMotor( 2 );
 					break;
 			}
 		}
@@ -331,8 +409,8 @@ createGround = function(scene) {
 	var ground, ground_material;
 	ground_material = Physijs.createMaterial(
 			new THREE.MeshLambertMaterial({ map: loader.load( 'resources/rocks.jpg' ) }),
-			5, // high friction
-			1.0 // low restitution
+			1, // high friction
+			0.3 // low restitution
 		);
 		ground_material.map.wrapS = ground_material.map.wrapT = THREE.RepeatWrapping;
 		ground_material.map.repeat.set( 3, 3 );
