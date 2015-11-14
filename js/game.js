@@ -4,14 +4,14 @@ CONTROLS3 = {up:0, back:0, left:0, right:0} // todo
 CONTROLS4 = {up:0, back:0, left:0, right:0} // todo
 
 CONTROLS = [CONTROLS1, CONTROLS2, CONTROLS3, CONTROLS4]
-
 COLORS = {green:0x2D8633, blue:0x236467, red:0xAA3C39, orange:0xAA6D39}
-
 PLAYER_NAMES = ['Bob', 'Richard', '42', 'Pina Collada']
-
 PLAYERS = [];
-
 KEYS = [];
+
+var ZERO = new THREE.Vector3(0,0,0);
+var ONE = new THREE.Vector3(1,1, 1);
+
 
 var score_board;
 
@@ -135,6 +135,11 @@ updateLifes = function() {
 
 checkPositionOfCars = function() {
 	for(var i = 0; i < PLAYERS.length; i++) {
+
+		// update lights
+		PLAYERS[i].car.SpotLight.position.copy(PLAYERS[i].car.body.position);
+		PLAYERS[i].car.SpotLight.__dirtyPosition = true;
+
 		if (PLAYERS[i].car.body.position.y < -50) {
 			// TODO: car dies and respawns if it has enought score
 			if (PLAYERS[i].lifes > 0) {
@@ -149,11 +154,14 @@ checkPositionOfCars = function() {
 respawn = function(player) {
 	var car = player.car;
 
-	car.body.position.y = 10;
-	car.body.position.x = 0;
-	car.body.position.z = 0;
+	scene.remove(car.wheel_bl);
+	scene.remove(car.wheel_br);
+	scene.remove(car.wheel_fl);
+	scene.remove(car.wheel_fr);
+	scene.remove(car.body);
 
-	car.__dirtyPosition = true;
+	var i = 1;
+	player.car = createCar(scene, COLORS[player.color], {x: 10*i, y:10, z:10*i});
 
 }
 
@@ -167,8 +175,6 @@ initKeys = function() {
     function(e){
         KEYS[e.keyCode] = false;
     }, false);
-
-
 
 }
 
@@ -198,11 +204,18 @@ createCar = function(scene, color, position) {
 		data["car_material"],
 		1000
 	);
-	car.body.position.y = 10 + position.y;
-	car.body.position.x = position.x;
-	car.body.position.z = position.z;
+	car.body.position.set(position.x, 10 + position.y, position.z);
 
 	scene.add( car.body );
+
+	//THREE.CameraHelper( light.shadow )
+	// head light
+	car.SpotLight = new THREE.SpotLight( 0xffffff, 5, 15, Math.PI/2, 1 );
+	car.SpotLight.position.set(position.x, 10 + 2 + position.y, position.z);
+	car.SpotLight.castShadow = true;
+	car.SpotLight.shadowDarkness = 0.5;
+	scene.add(car.SpotLight);
+
 	
 	// Wheels
 	wheel_pos = {x: 3.5, y: 10, z:5}
@@ -321,88 +334,6 @@ refreshSpeeds = function() {
 	}
 
 }
-
-addCarControls = function(car, controls) {
-
-	//constraint.configureAngularMotor(
-    //	which, // which angular motor to configure - 0,1,2 match x,y,z
-    //	low_limit, // lower limit of the motor
-    //	high_limit, // upper limit of the motor
-    //	velocity, // target velocity
-    //	max_force // maximum force the motor can apply
-	//);
-
-	m = {low_limit:1, hight_limit:0, velocity_forward:200, velocity_bacward:-5, max_force:1000};
-	t = {low_limit:-Math.PI / 2, hight_limit:Math.PI / 2, velocity_left:1, velocity_right:-1, max_force:400};
-
-
-	document.addEventListener(
-		'keydown',
-		function( ev ) {
-			switch( ev.keyCode ) {	
-				case controls.up:
-					car.wheel_bl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
-					car.wheel_br_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
-					car.wheel_fl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
-					car.wheel_fr_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
-
-					car.wheel_bl_constraint.enableAngularMotor( 2 );
-					car.wheel_br_constraint.enableAngularMotor( 2 );
-					car.wheel_fl_constraint.enableAngularMotor( 2 );
-					car.wheel_fr_constraint.enableAngularMotor( 2 );
-					break;
-				case controls.back:
-					car.wheel_bl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_bacward, m.max_force);
-					car.wheel_br_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_bacward, m.max_force);
-					car.wheel_bl_constraint.enableAngularMotor( 2 );
-					car.wheel_br_constraint.enableAngularMotor( 2 );
-					break;
-				case controls.left:
-					car.wheel_bl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, -2*m.velocity_forward, m.max_force);
-					car.wheel_br_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
-					car.wheel_fl_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, -2*m.velocity_forward, m.max_force);
-					car.wheel_fr_constraint.configureAngularMotor( 2, m.low_limit, m.high_limit, m.velocity_forward, m.max_force);
-
-					car.wheel_bl_constraint.enableAngularMotor( 2 );
-					car.wheel_br_constraint.enableAngularMotor( 2 );
-					car.wheel_fl_constraint.enableAngularMotor( 2 );
-					car.wheel_fr_constraint.enableAngularMotor( 2 );
-					break;
-
-				case controls.right:
-					
-					break;
-			}
-		}
-	);
-	
-	document.addEventListener(
-		'keyup',
-		function( ev ) {
-			switch( ev.keyCode ) {
-				case controls.up:
-					car.wheel_bl_constraint.disableAngularMotor( 2 );
-					car.wheel_br_constraint.disableAngularMotor( 2 );
-					break;
-				case controls.back:
-					car.wheel_bl_constraint.disableAngularMotor( 2 );
-					car.wheel_br_constraint.disableAngularMotor( 2 );
-					break;
-				case controls.left:
-					car.wheel_fl_constraint.disableAngularMotor( 2 );
-					car.wheel_fr_constraint.disableAngularMotor( 2 );
-					break;
-				case controls.right:
-					car.wheel_fl_constraint.disableAngularMotor( 2 );
-					car.wheel_fr_constraint.disableAngularMotor( 2 );
-					break;
-			}
-		}
-	);
-
-}
-
-
 
 // todo: copy paste, daj drugo obliko tal(random generirano?), drug material
 createGround = function(scene) {
