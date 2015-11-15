@@ -20,7 +20,6 @@ Physijs.scripts.ammo = 'ammo.js';
 
 var renderer, render_stats, physics_stats, loader;
 var scene, camera, light;
-var cars = {}; // map of carName:carObject
 
 init = function() {
 
@@ -51,14 +50,6 @@ init = function() {
 			physics_stats.update();
 		});
 
-		// Camera 
-		// todo: tle nastimej da bo pravilna kamera
-		camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 1000)
-		camera.position.set( 0, 600, 0 );
-		//camera.position.set( 60, 50, 60);
-		camera.lookAt( scene.position );
-		scene.add( camera );
-
 		// Light
 		// todo: to je copy-paste light, mal kostumizerejva
 		light = new THREE.DirectionalLight( 0xFFFFFF );
@@ -81,9 +72,12 @@ init = function() {
 		initKeys();
 
 		var p;
+		var views = createViews(NUMBER_OF_PLAYERS);
 		for (var i = 0; i < NUMBER_OF_PLAYERS; i++) {
 			var col = Object.keys(COLORS)[i];
+
 			p = {
+				view: views[i],
 				index: i,
 				name: PLAYER_NAMES[i],
 				color: col,
@@ -91,22 +85,68 @@ init = function() {
 				car: createCar(scene, COLORS[col], {x: 10*i, y:10, z:10*i}),
 				lifes : MAX_LIFES
 			}
-			//addCarControls(p.car, CONTROLS[i]);
+
+			addCameraToPlayer(p);
+
 			PLAYERS.push(p);
 		}
+
+		
+		// Obstacles
+		createObstacles(scene, 10);
 	
 		// start
 		requestAnimationFrame( render );
 		scene.simulate();
 }
 
+addCameraToPlayer = function(p) {
+	var camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 1000)
+	var pos = p.car.body.position;
+	camera.position.set(pos.x + 75, pos.y + 20, pos.z);
+	camera.lookAt( pos );
+	p.car.body.add(camera);
+	p.camera = camera;
+}
+
+// If the player resizes the screen during gameplay
+var windowHeight, windowWidth;
+function updateSize() { 
+
+	if ( windowWidth != window.innerWidth || windowHeight != window.innerHeight ) {
+
+		windowWidth  = window.innerWidth;
+		windowHeight = window.innerHeight;
+
+		renderer.setSize ( windowWidth, windowHeight );
+	}
+
+}
+
 render = function() {
 		checkPositionOfCars();
 		refreshSpeeds();
+		updateSize();
 
+		for(var i = 0; i < PLAYERS.length; ++i){
+			var view = PLAYERS[i].view;
+			var camera = PLAYERS[i].camera;
+
+			var left   = Math.floor( windowWidth  * view.left );
+			var bottom = Math.floor( windowHeight * view.bottom );
+			var width  = Math.floor( windowWidth  * view.width );
+			var height = Math.floor( windowHeight * view.height );
+			renderer.setViewport( left, bottom, width, height );
+			renderer.setScissor( left, bottom, width, height ); // se mi zdi, de ne rabm
+			renderer.enableScissorTest ( true );
+
+			camera.aspect = width / height;
+			camera.updateProjectionMatrix();
+			
+			renderer.render( scene, camera );
+		}
 
 		requestAnimationFrame( render );
-		renderer.render( scene, camera );
 		render_stats.update();
 }
 
@@ -136,12 +176,11 @@ updateLifes = function() {
 checkPositionOfCars = function() {
 	for(var i = 0; i < PLAYERS.length; i++) {
 
-		// update lights
+		// TODO: update lights
 		PLAYERS[i].car.SpotLight.position.copy(PLAYERS[i].car.body.position);
 		PLAYERS[i].car.SpotLight.__dirtyPosition = true;
 
 		if (PLAYERS[i].car.body.position.y < -50) {
-			// TODO: car dies and respawns if it has enought score
 			if (PLAYERS[i].lifes > 0) {
 				PLAYERS[i].lifes = PLAYERS[i].lifes - 1;
 				respawn(PLAYERS[i])
@@ -160,9 +199,8 @@ respawn = function(player) {
 	scene.remove(car.wheel_fr);
 	scene.remove(car.body);
 
-	var i = 1;
-	player.car = createCar(scene, COLORS[player.color], {x: 10*i, y:10, z:10*i});
-
+	player.car = createCar(scene, COLORS[player.color], {x: 0, y:100, z:0});
+	addCameraToPlayer(player);
 }
 
 initKeys = function() {
@@ -197,7 +235,7 @@ createCar = function(scene, color, position) {
 			1, // high friction
 			0.2 // medium restitution
 		);
-	data["wheel_geometry"] = new THREE.CylinderGeometry( 2.5*k, 2.5*k, 1.5*k, 13 );
+	data["wheel_geometry"] = new THREE.CylinderGeometry( 2.5*k, 2.5*k, 1.5*k, 8 );
 		
 	car.body = new Physijs.BoxMesh(
 		new THREE.BoxGeometry( 10*k, 2*k, 7*k ),
@@ -336,6 +374,37 @@ refreshSpeeds = function() {
 
 }
 
+createViews = function(number) {
+	var views;
+	switch( number ) {
+		case 2:
+			views = [
+				{ left: 0, bottom: 0, width: 0.5, height: 1.0}, 	// left side
+				{ left: 0.5, bottom: 0, width: 0.5, height: 1.0} 	// right side
+			];
+			break;
+		case 3:
+			views = [
+				{ left: 0, bottom: 0, width: 0.5, height: 1.0 }, 	// left side 
+				{ left: 0.5, bottom: 0, width: 0.5, height: 0.5}, 	// bottom right 
+				{ left: 0.5, bottom: 0.5, width: 0.5, height: 0.5} 	// top right
+			];
+			break;
+		case 4:
+			views = [
+				{ left: 0, bottom: 0, width: 0.5, height: 0.5}, 	// bottom left side
+				{ left: 0, bottom: 0.5, width: 0.5, height: 0.5}, 	// top left side
+				{ left: 0.5, bottom: 0, width: 0.5, height: 0.5}, 	// bottom right
+				{ left: 0.5, bottom: 0.5, width: 0.5, height: 0.5} 	// top right
+			];
+			break;
+		default:
+			alert("Napacno stevilo igralcev");
+			return;
+	}
+	return views;
+}
+
 // todo: copy paste, daj drugo obliko tal(random generirano?), drug material
 createGround = function(scene) {
 	var ground, ground_material;
@@ -353,5 +422,37 @@ createGround = function(scene) {
 			0 // mass
 		);
 	scene.add( ground );
+}
+
+createObstacles = function(scene, num){
+	var material = Physijs.createMaterial(
+			new THREE.MeshLambertMaterial({ map: loader.load( 'resources/rocks.jpg' ) }),
+			.8, // low friction
+			.6 // high restitution
+		);
+	//material.map.wrapS = ground_material.map.wrapT = THREE.RepeatWrapping;
+	material.map.repeat.set( .25, .25 );
+	
+	for(var i = 0; i < num; ++i){ 
+		var box = new Physijs.BoxMesh(
+			new THREE.BoxGeometry( Math.random() * 15 + 5, 
+								   Math.random() * 15 + 5,
+								   Math.random() * 15 + 5 ),
+			material
+		);
+
+
+		box.castShadow = true;
+		box.receiveShadow = true;
+		
+		var x = Math.floor(Math.random()*50) + 10; // this will get a number between 1 and 99;
+		x *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+		var y = Math.floor(Math.random()*50) + 10; // this will get a number between 1 and 99;
+		y *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+				
+		box.position.set( x, 30, y );
+		
+		scene.add( box );
+	}
 }
 
