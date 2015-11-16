@@ -9,6 +9,8 @@ PLAYER_NAMES = ['Bob', 'Richard', '42', 'Pina Collada']
 PLAYERS = [];
 KEYS = [];
 
+BACKGROUND = {};
+
 var ZERO = new THREE.Vector3(0,0,0);
 var ONE = new THREE.Vector3(1,1, 1);
 var SIX = new THREE.Vector3(.6,.6,.6);
@@ -83,7 +85,7 @@ init = function() {
 				color: col,
 				controls: CONTROLS[i],
 				car: createCar(scene, COLORS[col], {x: 10*i, y:10, z:10*i}),
-				lifes : MAX_LIFES
+				lifes : MAX_LIFES,
 			}
 
 			addCameraToPlayer(p);
@@ -91,13 +93,52 @@ init = function() {
 			PLAYERS.push(p);
 		}
 
-		
+		// Create background (has to be after players are created)
+		createBackground();
+
 		// Obstacles
 		createObstacles(scene, 10);
 	
 		// start
 		requestAnimationFrame( render );
 		scene.simulate();
+}
+
+createBackground = function() {
+
+	BACKGROUND.bg_neutral_material = new THREE.MeshBasicMaterial( 
+		    		{ color: (0x6FC3DF), shading: THREE.FlatShading, 
+		    			vertexColors: THREE.VertexColors } );
+
+	BACKGROUND.mesh = new THREE.Mesh(
+	  new THREE.PlaneGeometry(2, 2, 0),
+	  BACKGROUND.bg_neutral_material
+	);
+
+	// The bg plane shouldn't care about the z-buffer.
+	BACKGROUND.mesh.material.depthTest = false;
+	BACKGROUND.mesh.material.depthWrite = false;
+
+
+	BACKGROUND.scene = new THREE.Scene();
+	BACKGROUND.camera = new THREE.Camera();
+	BACKGROUND.scene.add(BACKGROUND.light);
+	BACKGROUND.color_timer = setInterval(function() {
+		var hsl = BACKGROUND.mesh.material.color.getHSL();
+		BACKGROUND.mesh.material.color.setHSL(hsl.h, hsl.s, hsl.l * .995)
+	}, 100);
+
+
+	BACKGROUND.scene.add(BACKGROUND.camera)
+	BACKGROUND.scene.add(BACKGROUND.mesh)
+
+	BACKGROUND.refresh = function() {
+
+		// update background
+		renderer.autoClear = false;
+		renderer.clear();
+		renderer.render(BACKGROUND.scene, BACKGROUND.camera);
+	}
 }
 
 addCameraToPlayer = function(p) {
@@ -143,6 +184,7 @@ render = function() {
 			camera.aspect = width / height;
 			camera.updateProjectionMatrix();
 			
+			BACKGROUND.refresh();
 			renderer.render( scene, camera );
 		}
 
