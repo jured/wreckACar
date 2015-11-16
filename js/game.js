@@ -1,7 +1,7 @@
 CONTROLS1 = {up:38, back:40, left:37, right:39} // Smerne tipke
 CONTROLS2 = {up:87, back:83, left:65, right:68} // WASD
-CONTROLS3 = {up:0, back:0, left:0, right:0} // todo
-CONTROLS4 = {up:0, back:0, left:0, right:0} // todo
+CONTROLS3 = {up:90, back:72, left:71, right:74} // ZGHJ
+CONTROLS4 = {up:80, back:186, left:76, right:222} // PLČĆ
 
 CONTROLS = [CONTROLS1, CONTROLS2, CONTROLS3, CONTROLS4]
 COLORS = {green:0x2D8633, blue:0x236467, red:0xAA3C39, orange:0xAA6D39}
@@ -25,41 +25,34 @@ var scene, camera, light;
 
 init = function() {
 
-		// todo: to  je copy paste, se je za poigrat pa mal odstrant dodat po zelji
 		renderer = new THREE.WebGLRenderer({ antialias: true });
 		renderer.setSize( window.innerWidth, window.innerHeight );
 		renderer.shadowMap.enabled = true;
 		renderer.shadowMapSoft = true;
 		document.getElementById( 'viewport' ).appendChild( renderer.domElement );
 
-		render_stats = new Stats();
-		render_stats.domElement.style.position = 'absolute';
-		render_stats.domElement.style.top = '0px';
-		render_stats.domElement.style.zIndex = 100;
-		document.getElementById( 'viewport' ).appendChild( render_stats.domElement );
-
-		physics_stats = new Stats();
-		physics_stats.domElement.style.position = 'absolute';
-		physics_stats.domElement.style.top = '50px';
-		physics_stats.domElement.style.zIndex = 100;
-		document.getElementById( 'viewport' ).appendChild( physics_stats.domElement );
-
 		// Scene
 		scene = new Physijs.Scene;
 		scene.setGravity(new THREE.Vector3( 0, -30, 0 ))
 		scene.addEventListener('update', function() {
-			scene.simulate(undefined, 2);
-			physics_stats.update();
+			scene.simulate(undefined, 1);
 		});
 
-		// Light
-		// todo: to je copy-paste light, mal kostumizerejva
-		light = new THREE.DirectionalLight( 0xFFFFFF );
-		light.position.set( 20, 40, -15 );
-		light.target.position.copy( scene.position );
-		scene.add( light );
-
 		loader = new THREE.TextureLoader();
+
+		// Light
+		var light1 = new THREE.DirectionalLight( 0xFFFFFF );
+		light1.position.set( 100, 100, 0);
+		light1.target.position.copy( scene.position );
+		light1.castShadow = true;
+		scene.add( light1 );
+
+		var light2 = new THREE.DirectionalLight( 0xFFFFFF );
+		light2.position.set( -100, 100, 0);
+		light2.target.position.copy( scene.position );
+		light2.castShadow = true;
+		scene.add( light2 );
+
 
 		// UI
 		initUI();
@@ -115,14 +108,11 @@ createBackground = function() {
 	  BACKGROUND.bg_neutral_material
 	);
 
-	// The bg plane shouldn't care about the z-buffer.
 	BACKGROUND.mesh.material.depthTest = false;
 	BACKGROUND.mesh.material.depthWrite = false;
 
-
 	BACKGROUND.scene = new THREE.Scene();
 	BACKGROUND.camera = new THREE.Camera();
-	BACKGROUND.scene.add(BACKGROUND.light);
 	BACKGROUND.color_timer = setInterval(function() {
 		var hsl = BACKGROUND.mesh.material.color.getHSL();
 		BACKGROUND.mesh.material.color.setHSL(hsl.h, hsl.s, hsl.l * .995)
@@ -144,6 +134,8 @@ createBackground = function() {
 addCameraToPlayer = function(p) {
 	var camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 1000)
 	var pos = p.car.body.position;
+	//camera.position.set(0, 600,0);
+	camera.lookAt( pos );
 	camera.position.set(pos.x + 75, pos.y + 20, pos.z);
 	camera.lookAt( pos );
 	p.car.body.add(camera);
@@ -189,7 +181,6 @@ render = function() {
 		}
 
 		requestAnimationFrame( render );
-		render_stats.update();
 }
 
 initUI = function() {
@@ -217,10 +208,6 @@ updateLifes = function() {
 
 checkPositionOfCars = function() {
 	for(var i = 0; i < PLAYERS.length; i++) {
-
-		// TODO: update lights
-		PLAYERS[i].car.SpotLight.position.copy(PLAYERS[i].car.body.position);
-		PLAYERS[i].car.SpotLight.__dirtyPosition = true;
 
 		if (PLAYERS[i].car.body.position.y < -50) {
 			if (PLAYERS[i].lifes > 0) {
@@ -258,11 +245,7 @@ initKeys = function() {
 
 }
 
-// todo: copy paste, daj parametrizerane kontrole, spremen obliko lastnosti avta
-// dodaj parameter kje naj se spawna, tweekaj vrednosti, obliko barve
-// naredi avto, ga postavi v svet in ga vrne
 createCar = function(scene, color, position) {
-	var k = 1;
 
 	var car = {};
 
@@ -270,33 +253,23 @@ createCar = function(scene, color, position) {
 	data["car_material"] = Physijs.createMaterial(
 			new THREE.MeshLambertMaterial({ color: color }),
 			.8, // high friction
-			10 // low restitution
+			.3 // low restitution
 		);
 	data["wheel_material"] = Physijs.createMaterial(
 			new THREE.MeshLambertMaterial({ color: 0x444444 }),
 			1, // high friction
 			0.2 // medium restitution
 		);
-	data["wheel_geometry"] = new THREE.CylinderGeometry( 2.5*k, 2.5*k, 1.5*k, 8 );
-		
+	data["wheel_geometry"] = new THREE.CylinderGeometry( 2.5, 2.5, 1.5, 8 );
+
 	car.body = new Physijs.BoxMesh(
-		new THREE.BoxGeometry( 10*k, 2*k, 7*k ),
+		new THREE.BoxGeometry( 10, 2, 7 ),
 		data["car_material"],
-		1000
+		2000
 	);
 	car.body.position.set(position.x, 10 + position.y, position.z);
-
 	scene.add( car.body );
 
-	//THREE.CameraHelper( light.shadow )
-	// head light
-	car.SpotLight = new THREE.SpotLight( 0xffffff, 5, 15, Math.PI/2, 1 );
-	car.SpotLight.position.set(position.x, 10 + 2 + position.y, position.z);
-	car.SpotLight.castShadow = true;
-	car.SpotLight.shadowDarkness = 0.5;
-	scene.add(car.SpotLight);
-
-	
 	// Wheels
 	wheel_pos = {x: 3.5, y: 10, z:5}
 
@@ -307,10 +280,10 @@ createCar = function(scene, color, position) {
 	);
 
 	car.wheel_fl.rotation.x = Math.PI / 2;
-	car.wheel_fl.position.set( (-wheel_pos.x + position.x)*k, (wheel_pos.y + position.y)*k, (wheel_pos.z  + position.z)*k);
+	car.wheel_fl.position.set( (-wheel_pos.x + position.x), (wheel_pos.y + position.y), (wheel_pos.z  + position.z));
 	scene.add( car.wheel_fl );
 	car.wheel_fl_constraint = new Physijs.DOFConstraint(
-		car.wheel_fl, car.body, new THREE.Vector3((-wheel_pos.x + position.x)*k, (wheel_pos.y + position.y)*k, (wheel_pos.z  + position.z)*k)
+		car.wheel_fl, car.body, new THREE.Vector3((-wheel_pos.x + position.x), (wheel_pos.y + position.y), (wheel_pos.z  + position.z))
 	);
 	scene.addConstraint( car.wheel_fl_constraint );
 	car.wheel_fl_constraint.setAngularLowerLimit({ x: 0, y: 0, z: 0 });
@@ -447,19 +420,18 @@ createViews = function(number) {
 	return views;
 }
 
-// todo: copy paste, daj drugo obliko tal(random generirano?), drug material
 createGround = function(scene) {
 	var ground, ground_material;
 	ground_material = Physijs.createMaterial(
-			new THREE.MeshLambertMaterial({ map: loader.load( 'resources/rocks.jpg' ) }),
+			new THREE.MeshLambertMaterial({ map: loader.load( 'resources/tron1.jpg' ) }),
 			1, // high friction
 			0.3 // low restitution
 		);
 		ground_material.map.wrapS = ground_material.map.wrapT = THREE.RepeatWrapping;
-		ground_material.map.repeat.set( 3, 3 );
+		ground_material.map.repeat.set( 2, 2);
 
 	ground = new Physijs.CylinderMesh(
-				new THREE.CylinderGeometry( 200, 2, 1, 32 ),
+				new THREE.CylinderGeometry( 200, 2, 0, 6 ),
 			ground_material,
 			0 // mass
 		);
@@ -467,32 +439,48 @@ createGround = function(scene) {
 }
 
 createObstacles = function(scene, num){
-	var material = Physijs.createMaterial(
-			new THREE.MeshLambertMaterial({ map: loader.load( 'resources/rocks.jpg' ) }),
+	var cone_material = Physijs.createMaterial(
+			new THREE.MeshLambertMaterial({ map: loader.load( 'resources/tron1.jpg' ) }),
 			.8, // low friction
 			.6 // high restitution
 		);
-	//material.map.wrapS = ground_material.map.wrapT = THREE.RepeatWrapping;
-	material.map.repeat.set( .25, .25 );
-	
-	for(var i = 0; i < num; ++i){ 
-		var box = new Physijs.BoxMesh(
-			new THREE.BoxGeometry( Math.random() * 15 + 5, 
-								   Math.random() * 15 + 5,
-								   Math.random() * 15 + 5 ),
-			material
-		);
+	var cone_geometry = new THREE.CylinderGeometry( 0, Math.random() * 30 + 6, Math.random() * 16 , 6, 6, 42, 12);
 
+	cone_material.map.wrapS = cone_material.map.wrapT = THREE.RepeatWrapping;
+	cone_material.map.repeat.set( .25, .25 );
+
+	for(var i = 0; i < num/2; ++i){ 
+		var cone = new Physijs.ConeMesh(cone_geometry, cone_material, 0);
+
+		cone.castShadow = true;
+		cone.receiveShadow = true;
+		
+		var x = Math.floor(Math.random()*80) + 10; // this will get a number between 1 and 99;
+		x *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+		var z = Math.floor(Math.random()*80) + 10; // this will get a number between 1 and 99;
+		z *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+				
+		cone.position.set( x, 0, z );	
+		scene.add( cone );
+	}
+
+	var box_material = Physijs.createMaterial(
+			new THREE.MeshLambertMaterial({ map: loader.load( 'resources/tron1.jpg' ) }), .8, .6);
+	var box_geometry = new THREE.BoxGeometry( Math.random() * 25 + 5, 
+								   Math.random() * 25 + 5,
+								   Math.random() * 25 + 5 );
+	for(var i = 0; i < num/2; ++i){ 
+		var box = new Physijs.BoxMesh( box_geometry, box_material, 0);
 
 		box.castShadow = true;
 		box.receiveShadow = true;
 		
-		var x = Math.floor(Math.random()*50) + 10; // this will get a number between 1 and 99;
+		var x = Math.floor(Math.random()*120) + 10; // this will get a number between 1 and 99;
 		x *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
-		var y = Math.floor(Math.random()*50) + 10; // this will get a number between 1 and 99;
-		y *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+		var z = Math.floor(Math.random()*120) + 10; // this will get a number between 1 and 99;
+		z *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
 				
-		box.position.set( x, 30, y );
+		box.position.set( x, 0, z );
 		
 		scene.add( box );
 	}
