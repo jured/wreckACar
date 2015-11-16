@@ -164,7 +164,7 @@ render = function() {
 		checkPositionOfCars();
 		refreshSpeeds();
 		updateSize();
-
+		updateLifes()
 		hasGameEnded();
 
 		for(var i = 0; i < PLAYERS.length; ++i){
@@ -252,12 +252,13 @@ initUI = function() {
 updateLifes = function() {
 
 
-	var html = '2';
+	var html = '';
 	for(var i = 0; i < PLAYERS.length; i++) {
-		console.log(PLAYERS[i])
+		var p = PLAYERS[i];
+		html += "<font color=" + p.color + ">Name: " + p.name +" has lives left: " + p.lifes + "</font><br>\n"
 
 	}
-	document.getElementById("score_board").innerHTML = "TODO: dodaj score" + html;
+	document.getElementById("score_board").innerHTML = html;
 
 }
 
