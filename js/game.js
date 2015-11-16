@@ -5,6 +5,7 @@ CONTROLS4 = {up:80, back:186, left:76, right:222} // PLČĆ
 
 CONTROLS = [CONTROLS1, CONTROLS2, CONTROLS3, CONTROLS4]
 COLORS = {green:0x2D8633, blue:0x236467, red:0xAA3C39, orange:0xAA6D39}
+SPAWN_POINT = [{x:-100, z:100}, {x:100, z:-100}, {x:100, z:100}, {x:-100, z:-100}];
 PLAYER_NAMES = ['Bob', 'Richard', '42', 'Pina Collada']
 PLAYERS = [];
 KEYS = [];
@@ -81,7 +82,7 @@ init = function() {
 				name: PLAYER_NAMES[i],
 				color: col,
 				controls: CONTROLS[i],
-				car: createCar(scene, COLORS[col], {x: 10*i, y:10, z:10*i}),
+				car: createCar(scene, COLORS[col], {x:SPAWN_POINT[i]['x'], y:50, z:SPAWN_POINT[i]['z']}),
 				lifes : MAX_LIFES,
 			}
 
@@ -139,10 +140,8 @@ addCameraToPlayer = function(p) {
 	var camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 1000)
 	var pos = p.car.body.position;
 	//camera.position.set(0, 600,0);
-	camera.lookAt( pos );
 	camera.position.set(pos.x + 75, pos.y + 20, pos.z);
 	camera.lookAt( pos );
-	p.car.body.add(camera);
 	p.camera = camera;
 }
 
@@ -178,6 +177,10 @@ render = function() {
 			renderer.setViewport( left, bottom, width, height );
 			renderer.setScissor( left, bottom, width, height ); // se mi zdi, de ne rabm
 			renderer.enableScissorTest ( true );
+
+			var pos = PLAYERS[i].car.body.position;
+			camera.position.set(pos.x + 75, pos.y + 20, pos.z);
+			camera.lookAt( pos );
 
 			camera.aspect = width / height;
 			camera.updateProjectionMatrix();
