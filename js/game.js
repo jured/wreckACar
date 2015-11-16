@@ -11,6 +11,8 @@ KEYS = [];
 
 BACKGROUND = {};
 
+ENDED = false;
+
 var ZERO = new THREE.Vector3(0,0,0);
 var ONE = new THREE.Vector3(1,1, 1);
 var SIX = new THREE.Vector3(.6,.6,.6);
@@ -35,7 +37,9 @@ init = function() {
 		scene = new Physijs.Scene;
 		scene.setGravity(new THREE.Vector3( 0, -30, 0 ))
 		scene.addEventListener('update', function() {
-			scene.simulate(undefined, 1);
+			if (!ENDED) {
+				scene.simulate(undefined, 1);
+			}
 		});
 
 		loader = new THREE.TextureLoader();
@@ -93,7 +97,7 @@ init = function() {
 		createObstacles(scene, 10);
 	
 		// start
-		requestAnimationFrame( render );
+		ID = requestAnimationFrame( render );
 		scene.simulate();
 }
 
@@ -161,6 +165,8 @@ render = function() {
 		refreshSpeeds();
 		updateSize();
 
+		hasGameEnded();
+
 		for(var i = 0; i < PLAYERS.length; ++i){
 			var view = PLAYERS[i].view;
 			var camera = PLAYERS[i].camera;
@@ -183,6 +189,51 @@ render = function() {
 		requestAnimationFrame( render );
 }
 
+hasGameEnded = function() {
+	var number_of_alive_players = 0;
+
+	for(var i = 0; i < PLAYERS.length; i++) {
+		if (PLAYERS[i].lifes > 0) {
+			number_of_alive_players++;
+		}
+	}
+
+	if (number_of_alive_players <= 1) {
+		endGame();
+	}
+
+
+}
+
+endGame = function() {
+	var end = document.createElement('div');
+	end.id = "end"
+	end.style.position = 'absolute';
+	end.style.zIndex = 200;
+	end.style.width = 200;
+	end.style.height = 500;
+	end.style.top =  500+ 'px';
+	end.style.left = 400 + 'px';
+	end.style.color = "white"
+	end.style.backgroundColor = 'black';
+	document.body.appendChild(end);
+	
+	var winner;
+	for(var i = 0; i < PLAYERS.length; i++) {
+		if (PLAYERS[i].lifes > 0) {
+			winner = PLAYERS[i];
+			break;
+		}
+	}
+
+	document.getElementById("end")
+		.innerHTML = "And the winner is: " + winner.name;
+
+	cancelAnimationFrame( ID );
+	ENDED = true;
+
+}
+
 initUI = function() {
 	score_board = document.createElement('div');
 	score_board.id = "score_board"
@@ -199,11 +250,15 @@ initUI = function() {
 }
 
 updateLifes = function() {
+
+
 	var html = '2';
 	for(var i = 0; i < PLAYERS.length; i++) {
 		console.log(PLAYERS[i])
+
 	}
 	document.getElementById("score_board").innerHTML = "TODO: dodaj score" + html;
+
 }
 
 checkPositionOfCars = function() {
