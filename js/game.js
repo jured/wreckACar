@@ -26,6 +26,9 @@ Physijs.scripts.ammo = 'ammo.js';
 var renderer, render_stats, physics_stats, loader;
 var scene, camera, light;
 
+var crashSound;
+var fallingSound;
+
 init = function() {
 
 		renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -58,6 +61,16 @@ init = function() {
 		light2.castShadow = true;
 		scene.add( light2 );
 
+		// Sound
+	    crashSound = document.createElement('audio');
+	    var source1 = document.createElement('source');
+	    source1.src = 'sounds/vehicle_crash_large_glass.mp3';
+	    crashSound.appendChild(source1);
+
+	    fallingSound = document.createElement('audio');
+	    var source2 = document.createElement('source');
+	    source2.src = 'sounds/cartoon_comical_falling_tone.m4a';
+	    fallingSound.appendChild(source2);
 
 		// UI
 		initUI();
@@ -99,6 +112,7 @@ init = function() {
 	
 		// start
 		ID = requestAnimationFrame( render );
+		fallingSound.play();
 		scene.simulate();
 }
 
@@ -266,17 +280,20 @@ updateLifes = function() {
 }
 
 checkPositionOfCars = function() {
-	for(var i = 0; i < PLAYERS.length; i++) {
+    for(var i = 0; i < PLAYERS.length; i++) {
+      if (PLAYERS[i].car.body.position.y < -2) {
+        fallingSound.play();
+      }
+      if (PLAYERS[i].car.body.position.y < -50) {
+        fallingSound.play();
+        if (PLAYERS[i].lifes > 0) {
+          PLAYERS[i].lifes = PLAYERS[i].lifes - 1;
+          respawn(PLAYERS[i])
+        }
 
-		if (PLAYERS[i].car.body.position.y < -50) {
-			if (PLAYERS[i].lifes > 0) {
-				PLAYERS[i].lifes = PLAYERS[i].lifes - 1;
-				respawn(PLAYERS[i])
-			}
-
-		}
-	}
-}
+      }
+    }
+  }
 
 respawn = function(player) {
 	var car = player.car;
@@ -396,7 +413,9 @@ createCar = function(scene, color, position) {
 	scene.addConstraint( car.wheel_br_constraint );
 	car.wheel_br_constraint.setAngularLowerLimit({ x: 0, y: 0, z: 0 });
 	car.wheel_br_constraint.setAngularUpperLimit({ x: 0, y: 0, z: 0 });
-	
+
+	car.body.addEventListener('collision',  function(object) { crashSound.play(); });
+
 	return car;
 }
 
